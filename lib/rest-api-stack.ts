@@ -42,7 +42,7 @@ export class RestAPIStack extends cdk.Stack {
       tableName: "Movies",
     });
 
-        const movieCastsTable = new dynamodb.Table(this, "MovieCastTable", {
+    const movieCastsTable = new dynamodb.Table(this, "MovieCastTable", {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       partitionKey: { name: "movieId", type: dynamodb.AttributeType.NUMBER },
       sortKey: { name: "actorName", type: dynamodb.AttributeType.STRING },
@@ -56,7 +56,7 @@ export class RestAPIStack extends cdk.Stack {
     });
 
 
-            // Functions
+    // Functions
 
     const appFn = (
       name: string,
@@ -81,11 +81,20 @@ export class RestAPIStack extends cdk.Stack {
       CAST_TABLE_NAME: movieCastsTable.tableName,
     });
 
+    const addCastMemberFn = appFn("AddCastMember", 'addCastMember.ts', {
+      CAST_TABLE_NAME: movieCastsTable.tableName,
+    }
+    );
+
+
     moviesTable.grantReadData(getMovieByIdFn);
     movieCastsTable.grantReadData(getMovieCastMembersFn);
     moviesTable.grantReadData(getMovieCastMembersFn);
+    moviesTable.grantReadData(addCastMemberFn);
+    movieCastsTable.grantReadWriteData(addCastMemberFn)
 
-    new custom.AwsCustomResource(this, "moviesddbInitData", {
+
+    new custom.AwsCustomResource(this, "moviesddbInitDataForceRun", {
       onCreate: {
         service: "DynamoDB",
         action: "batchWriteItem",
@@ -95,14 +104,14 @@ export class RestAPIStack extends cdk.Stack {
             [movieCastsTable.tableName]: generateBatch(movieCasts),  // Added
           },
         },
-        physicalResourceId: custom.PhysicalResourceId.of("moviesddbInitData"), //.of(Date.now().toString()),
+        physicalResourceId: custom.PhysicalResourceId.of("moviesddbInitDataForceRun"), //.of(Date.now().toString()),
       },
       policy: custom.AwsCustomResourcePolicy.fromSdkCalls({
         resources: [moviesTable.tableArn, movieCastsTable.tableArn],  // Includes movie cast
       }),
     });
 
-        // REST API 
+    // REST API 
 
     const api = new apig.RestApi(this, "MoviesAPI", {
       description: "Movies API",
@@ -125,9 +134,17 @@ export class RestAPIStack extends cdk.Stack {
       "GET",
       new apig.LambdaIntegration(getMovieCastMembersFn)
     );
+        moviesEndpoint.addResource('cast').addMethod(
+        "POST",
+        new apig.LambdaIntegration(addCastMemberFn, { proxy: true })
+    );
+
+
+
+
 
 
   }
-  
+
 }
 
