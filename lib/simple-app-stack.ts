@@ -37,6 +37,19 @@ export class SimpleAppStack extends cdk.Stack {
       tableName: "Movies",
     });
 
+    const movieCastsTable = new dynamodb.Table(this, "MovieCastTable", {
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      partitionKey: { name: "movieId", type: dynamodb.AttributeType.NUMBER },
+      sortKey: { name: "actorName", type: dynamodb.AttributeType.STRING },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      tableName: "MovieCast",
+    });
+
+    movieCastsTable.addLocalSecondaryIndex({
+      indexName: "roleIx",
+      sortKey: { name: "roleName", type: dynamodb.AttributeType.STRING },
+    });
+
     new custom.AwsCustomResource(this, "moviesddbInitData", {
       onCreate: {
         service: "DynamoDB",
@@ -107,18 +120,7 @@ export class SimpleAppStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, "Get Movie Function Url", { value: getMovieByIdURL.url });
 
-        const movieCastsTable = new dynamodb.Table(this, "MovieCastTable", {
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      partitionKey: { name: "movieId", type: dynamodb.AttributeType.NUMBER },
-      sortKey: { name: "actorName", type: dynamodb.AttributeType.STRING },
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      tableName: "MovieCast",
-    });
-
-    movieCastsTable.addLocalSecondaryIndex({
-      indexName: "roleIx",
-      sortKey: { name: "roleName", type: dynamodb.AttributeType.STRING },
-    });
+  
 
         //  Functions .....
     const getMovieCastMembersFn = new lambdanode.NodejsFunction(
@@ -132,7 +134,7 @@ export class SimpleAppStack extends cdk.Stack {
         memorySize: 128,
         environment: {
           CAST_TABLE_NAME: movieCastsTable.tableName,
-          REGION: "eu-west-1",
+          REGION: cdk.Aws.REGION,
         },
       }
     );
