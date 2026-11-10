@@ -50,7 +50,7 @@ export class SimpleAppStack extends cdk.Stack {
       sortKey: { name: "roleName", type: dynamodb.AttributeType.STRING },
     });
 
-    new custom.AwsCustomResource(this, "moviesddbInitData", {
+    new custom.AwsCustomResource(this, "moviesddbInitDataRefreshed", {
       onCreate: {
         service: "DynamoDB",
         action: "batchWriteItem",
