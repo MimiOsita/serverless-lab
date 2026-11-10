@@ -5,6 +5,8 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as custom from "aws-cdk-lib/custom-resources";
 import { generateBatch } from "../shared/util";
 import { movies, movieCasts } from "../seed/movies";
+import * as apig from "aws-cdk-lib/aws-apigateway";
+
 
 
 
@@ -79,6 +81,9 @@ export class RestAPIStack extends cdk.Stack {
       CAST_TABLE_NAME: movieCastsTable.tableName,
     });
 
+    moviesTable.grantReadData(getMovieByIdFn);
+    movieCastsTable.grantReadData(getMovieCastMembersFn);
+    moviesTable.grantReadData(getMovieCastMembersFn);
 
     new custom.AwsCustomResource(this, "moviesddbInitData", {
       onCreate: {
@@ -97,10 +102,32 @@ export class RestAPIStack extends cdk.Stack {
       }),
     });
 
+        // REST API 
 
+    const api = new apig.RestApi(this, "MoviesAPI", {
+      description: "Movies API",
+      deployOptions: {
+        stageName: "dev",
+      },
+      // 👇 enable CORS
+      defaultCorsPreflightOptions: {
+        allowHeaders: ["Content-Type", "X-Amz-Date"],
+        allowMethods: ["OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
+        allowOrigins: ["*"],
+      },
+    });
 
+    const moviesEndpoint = api.root.addResource("movies");
+    const movieEndpoint = moviesEndpoint.addResource("{movieId}");
+    movieEndpoint.addMethod("GET", new apig.LambdaIntegration(getMovieByIdFn));
+    const movieCastEndpoint = movieEndpoint.addResource("cast");
+    movieCastEndpoint.addMethod(
+      "GET",
+      new apig.LambdaIntegration(getMovieCastMembersFn)
+    );
 
 
   }
+  
 }
 
