@@ -6,7 +6,7 @@ import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 const ddbDocClient = createDDbDocClient();
 // Handler
 export const handler: Handler = async (event, context) => {
-  try {
+   try {
     console.log("Event: ", JSON.stringify(event));
     const parameters = event?.queryStringParameters;
     const movieId = parameters ? parseInt(parameters.movieId) : undefined;
@@ -26,6 +26,7 @@ export const handler: Handler = async (event, context) => {
         Key: { id: movieId },
       })
     );
+    console.log('GetCommand response: ', commandOutput)
     if (!commandOutput.Item) {
       return {
         statusCode: 404,
